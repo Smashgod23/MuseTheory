@@ -1,0 +1,29 @@
+# Java / Maven
+backend/target/
+*.class
+*.jar
+*.war
+
+# Python
+ai-service/venv/
+ai-service/__pycache__/
+ai-service/app/__pycache__/
+*.pyc
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

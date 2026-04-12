@@ -1,29 +1,33 @@
-# Java / Maven
-backend/target/
+# === Environment & Secrets ===
+.env
+.env.local
+.env.production
+.env.*.local
+
+# === OS Files ===
+.DS_Store
+Thumbs.db
+
+# === Node / Frontend ===
+node_modules/
+dist/
+
+# === Java / Maven ===
+**/target/
 *.class
 *.jar
 *.war
 
-# Python
-ai-service/venv/
-ai-service/__pycache__/
-ai-service/app/__pycache__/
-*.pyc
-
-# Environment
-.env
-.env.local
-.env.production
-
-# IDE
+# === IDE ===
 .idea/
 *.iml
 .vscode/
 *.swp
 
-# OS
-.DS_Store
-Thumbs.db
+# === Python ===
+**/venv/
+__pycache__/
+*.pyc
 
-# Logs
+# === Logs ===
 *.log
