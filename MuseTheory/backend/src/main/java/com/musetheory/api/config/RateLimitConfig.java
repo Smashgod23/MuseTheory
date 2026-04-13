@@ -21,14 +21,18 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RateLimitConfig extends OncePerRequestFilter {
 
-    // Per-user buckets: 50 requests per minute for general API usage
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    // Separate bucket maps for auth vs general endpoints so brute-force
+    // login attempts get a much tighter limit than normal API usage.
+    private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String key = resolveKey(request);
-        Bucket bucket = buckets.computeIfAbsent(key, k -> createBucket());
+        boolean isAuth = request.getRequestURI().startsWith("/api/auth");
+        Map<String, Bucket> pool = isAuth ? authBuckets : generalBuckets;
+        Bucket bucket = pool.computeIfAbsent(key, k -> isAuth ? createAuthBucket() : createGeneralBucket());
 
         if (bucket.tryConsume(1)) {
             filterChain.doFilter(request, response);
@@ -40,7 +44,6 @@ public class RateLimitConfig extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        // Don't rate-limit public/docs endpoints
         return path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") || path.startsWith("/actuator");
     }
 
@@ -49,15 +52,22 @@ public class RateLimitConfig extends OncePerRequestFilter {
         if (auth != null && auth.getPrincipal() instanceof CustomUserDetails userDetails) {
             return "user:" + userDetails.getUser().getId();
         }
-        // Fall back to IP-based limiting for unauthenticated requests
         String forwarded = request.getHeader("X-Forwarded-For");
         String ip = (forwarded != null) ? forwarded.split(",")[0].trim() : request.getRemoteAddr();
         return "ip:" + ip;
     }
 
-    private Bucket createBucket() {
+    // 5 requests per minute on auth endpoints to slow down brute-force attempts
+    private Bucket createAuthBucket() {
         return Bucket.builder()
-                .addLimit(Bandwidth.simple(50, Duration.ofMinutes(1)))
+                .addLimit(Bandwidth.simple(5, Duration.ofMinutes(1)))
+                .build();
+    }
+
+    // 100 requests per minute for general API usage
+    private Bucket createGeneralBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.simple(100, Duration.ofMinutes(1)))
                 .build();
     }
 }

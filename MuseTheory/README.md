@@ -7,7 +7,7 @@ Contact: theprathamaithal@gmail.com
 
 ## What This Is
 
-Muse Theory is a backend system that listens to a musician's recorded performance and returns specific, time-stamped coaching suggestions about dynamics, phrasing, contrast, and expressive decisions. It is not a pitch tuner or a rhythm corrector. It focuses on the musical layer above technique -- the choices that turn correct notes into something worth listening to.
+Muse Theory is a backend system that listens to a musician's recorded performance and returns specific, time-stamped coaching suggestions about dynamics, phrasing, contrast, and expressive decisions. It is not a pitch tuner or a rhythm corrector. It focuses on the musical layer above technique: the choices that turn correct notes into something worth listening to.
 
 The system is built as two services: a Java Spring Boot API that handles authentication, data, and business logic, and a Python FastAPI microservice that runs ML inference. The client only ever talks to Spring Boot. The Python service sits behind it, processes audio, and returns structured analysis results.
 
@@ -17,7 +17,7 @@ This is not a wrapper around a general-purpose LLM. The plan is to train a domai
 
 I built this because I watched what happens when a good choir director's voice disappears from daily practice. In rehearsal, a skilled director provides the expressive pushback that turns correct notes into meaningful music: "put a crescendo here," "stress this phrase the second time," "you sang that twice, make it different." When rehearsal ends, that voice goes silent. Current practice tools only check pitch and rhythm. Nothing coaches the musical decisions.
 
-I wanted to build a system that keeps that voice going -- one trained on real music educator feedback, not scraped internet data.
+I wanted to build a system that keeps that voice going, one trained on real music educator feedback instead of scraped internet data.
 
 ## Architecture
 
@@ -62,7 +62,7 @@ Spring Boot is the single public entry point. It owns authentication (JWT), all 
 
 I ran into a circular foreign key problem right away with the database design. The `users` table references `teachers` (a student's assigned teacher), and `teachers` references `users` (because every teacher is also a user). You can't create both tables with their foreign keys at the same time in PostgreSQL. I solved it by creating the `teachers` table first without the `user_id` NOT NULL constraint, creating `users` with its `teacher_id` FK, then altering `teachers` to add the user FK and uniqueness constraint after both tables exist.
 
-The AI service contract was another decision point. I needed the Spring Boot backend and the Python service to agree on a data format before either one existed. I defined the request/response DTOs on both sides first -- `AIAnalysisRequest`/`AIAnalysisResponse` in Java and matching Pydantic models in Python -- and made the FastAPI service return realistic stub data. This means the full pipeline works end-to-end for testing even before real ML models are trained.
+The AI service contract was another decision point. I needed the Spring Boot backend and the Python service to agree on a data format before either one existed. I defined the request/response DTOs on both sides first (`AIAnalysisRequest`/`AIAnalysisResponse` in Java and matching Pydantic models in Python) and made the FastAPI service return realistic stub data. This means the full pipeline works end-to-end for testing even before real ML models are trained.
 
 Rate limiting had a subtlety: unauthenticated endpoints (login, register, public instrument lists) still need IP-based rate limiting to prevent abuse, but authenticated endpoints should limit per-user. I used Bucket4j with a filter that checks whether a JWT-authenticated user exists in the security context and falls back to IP-based keying when there's no auth.
 
@@ -83,13 +83,14 @@ For local development without AWS, I designed the S3 client to accept an endpoin
 
 | Component | Technology |
 |-----------|-----------|
-| API Server | Java 17, Spring Boot 3.2, Spring Security, Spring Data JPA |
+| API Server | Java 25, Spring Boot 3.4, Spring Security, Spring Data JPA |
 | Auth | JWT (jjwt library), bcrypt password hashing |
 | Database | PostgreSQL with Flyway migrations |
 | AI Service | Python 3.10+, FastAPI, Pydantic |
 | Object Storage | AWS S3 (MinIO for local dev) |
 | Rate Limiting | Bucket4j (in-memory token bucket) |
 | API Docs | SpringDoc OpenAPI / Swagger UI |
+| Frontend | React 18, Vite 5 |
 | Build | Maven |
 
 ## Project Structure
@@ -130,10 +131,11 @@ MuseTheory/
 
 ### Prerequisites
 
-- Java 17+
-- Maven 3.8+
+- Java 25+
+- Maven 3.9+
 - PostgreSQL 15+
 - Python 3.10+
+- Node.js 18+
 - (Optional) MinIO for local S3
 
 ### 1. Set up PostgreSQL
@@ -172,7 +174,17 @@ mvn spring-boot:run
 
 The API starts on http://localhost:8080. Swagger UI is at http://localhost:8080/swagger-ui.html.
 
-### 5. Test the flow
+### 5. Run the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend starts on http://localhost:5173 and proxies `/api` requests to the Spring Boot backend.
+
+### 6. Test the flow
 
 Register a user:
 ```bash
