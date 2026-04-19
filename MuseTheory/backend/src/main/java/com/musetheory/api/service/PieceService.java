@@ -32,10 +32,12 @@ public class PieceService {
                                       String language,
                                       Integer difficultyMin,
                                       Integer difficultyMax) {
-        String normalizedQ = (q == null || q.isBlank()) ? null : q.trim();
-        String normalizedEnsemble = (ensembleType == null || ensembleType.isBlank()) ? null : ensembleType.trim();
-        String normalizedStyle = (style == null || style.isBlank()) ? null : style.trim();
-        String normalizedLanguage = (language == null || language.isBlank()) ? null : language.trim();
+        // Empty string (not null) is the "no filter" sentinel. Untyped JDBC nulls
+        // get bound as bytea by the Postgres driver, which breaks LOWER(:param).
+        String normalizedQ = (q == null || q.isBlank()) ? "" : q.trim();
+        String normalizedEnsemble = (ensembleType == null || ensembleType.isBlank()) ? "" : ensembleType.trim();
+        String normalizedStyle = (style == null || style.isBlank()) ? "" : style.trim();
+        String normalizedLanguage = (language == null || language.isBlank()) ? "" : language.trim();
 
         return pieceRepository.search(
                 normalizedQ,
