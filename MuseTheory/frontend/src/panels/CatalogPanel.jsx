@@ -2,7 +2,17 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { formatDuration } from '../format';
 
-const ENSEMBLE_OPTIONS = ['', 'choir', 'band', 'orchestra', 'chamber', 'solo'];
+const ENSEMBLE_OPTIONS = [
+  { value: '',          label: 'Any ensemble' },
+  { value: 'vocal',    label: 'Vocal (all)' },
+  { value: 'choir',    label: 'Choir' },
+  { value: 'voice',    label: 'Solo voice' },
+  { value: 'opera',    label: 'Opera / stage' },
+  { value: 'orchestra',label: 'Orchestra' },
+  { value: 'chamber',  label: 'Chamber' },
+  { value: 'band',     label: 'Band' },
+  { value: 'solo',     label: 'Solo instrument' },
+];
 
 export default function CatalogPanel({ token, onSaved }) {
   const [filters, setFilters] = useState({
@@ -156,8 +166,8 @@ export default function CatalogPanel({ token, onSaved }) {
               onChange={(e) => setFilters({ ...filters, ensembleType: e.target.value })}
             >
               {ENSEMBLE_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt || 'Any ensemble'}
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
                 </option>
               ))}
             </select>

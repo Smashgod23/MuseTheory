@@ -37,13 +37,17 @@ const OPENOPUS_DELAY_MS = 150;
 const IMSLP_DELAY_MS = 700;
 
 // Maps Open Opus genre labels to the ensemble_type values the app uses.
+// Open Opus lumps all voice-based works under 'Vocal'; we use 'voice' for that
+// and let the title-keyword reclassification script (or enrich step) promote
+// masses, cantatas, oratorios, etc. to 'choir' after ingestion.
 const GENRE_TO_ENSEMBLE = {
-  'Orchestral': 'orchestra',
+  'Orchestral':    'orchestra',
   'Chamber Music': 'chamber',
-  'Choral': 'choir',
-  'Keyboard': 'solo',
-  'Vocal': 'solo',
-  'Stage': 'orchestra',
+  'Chamber':       'chamber',
+  'Choral':        'choir',
+  'Keyboard':      'solo',
+  'Vocal':         'voice',
+  'Stage':         'opera',
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

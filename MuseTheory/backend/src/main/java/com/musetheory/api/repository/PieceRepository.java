@@ -26,7 +26,10 @@ public interface PieceRepository extends JpaRepository<Piece, UUID> {
                     OR LOWER(COALESCE(p.composer, ''))       LIKE LOWER(CONCAT('%', :q, '%'))
                     OR LOWER(COALESCE(p.arranger, ''))       LIKE LOWER(CONCAT('%', :q, '%'))
                 )
-                AND (:ensembleType = '' OR LOWER(p.ensembleType) = LOWER(:ensembleType))
+                AND (:ensembleType = ''
+                     OR LOWER(p.ensembleType) = LOWER(:ensembleType)
+                     OR (:ensembleType = 'vocal' AND LOWER(p.ensembleType) IN ('choir', 'voice', 'opera'))
+                    )
                 AND (:style        = '' OR LOWER(p.genre)        = LOWER(:style))
                 AND (:language     = '' OR LOWER(p.language)     = LOWER(:language))
                 AND (:difficultyMin IS NULL OR p.difficultyLevel >= :difficultyMin)
