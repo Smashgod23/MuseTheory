@@ -19,7 +19,25 @@ export default function CatalogPanel({ token, onSaved }) {
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [saveMessage, setSaveMessage] = useState(null);
+
+  // Map of pieceId -> repertoire entry id for the logged-in user.
+  // null means not yet loaded; empty Map means loaded but nothing saved.
+  const [savedMap, setSavedMap] = useState(null);
+
+  // Load the user's saved pieces whenever auth state changes.
+  useEffect(() => {
+    if (!token) {
+      setSavedMap(null);
+      return;
+    }
+    api.listRepertoire()
+      .then((entries) => {
+        const m = new Map();
+        (entries || []).forEach((e) => m.set(e.piece.id, e.id));
+        setSavedMap(m);
+      })
+      .catch(() => setSavedMap(new Map()));
+  }, [token]);
 
   useEffect(() => {
     runSearch();
@@ -31,7 +49,6 @@ export default function CatalogPanel({ token, onSaved }) {
     if (e) e.preventDefault();
     setLoading(true);
     setError(null);
-    setSaveMessage(null);
     try {
       const data = await api.searchPieces(filters);
       setResults(data || []);
@@ -47,7 +64,6 @@ export default function CatalogPanel({ token, onSaved }) {
     setSelectedId(id);
     setDetail(null);
     setDetailLoading(true);
-    setSaveMessage(null);
     try {
       const data = await api.getPiece(id);
       setDetail(data);
@@ -61,20 +77,59 @@ export default function CatalogPanel({ token, onSaved }) {
   function closeDetail() {
     setSelectedId(null);
     setDetail(null);
-    setSaveMessage(null);
   }
 
-  async function saveToRepertoire() {
-    if (!detail) return;
-    setSaveMessage(null);
-    try {
-      await api.saveRepertoire({ pieceId: detail.id, status: 'NEW' });
-      setSaveMessage({ kind: 'success', text: 'Saved to your repertoire.' });
-      if (onSaved) onSaved();
-    } catch (err) {
-      setSaveMessage({ kind: 'error', text: err.message });
+  // Toggle save/unsave for a piece. Optimistic update so the UI responds instantly.
+  async function toggleSave(piece) {
+    if (!token || !savedMap) return;
+
+    const entryId = savedMap.get(piece.id);
+
+    if (entryId) {
+      // Unsave: remove immediately then confirm with server
+      setSavedMap((prev) => {
+        const next = new Map(prev);
+        next.delete(piece.id);
+        return next;
+      });
+      try {
+        await api.deleteRepertoire(entryId);
+      } catch {
+        // rollback on failure
+        setSavedMap((prev) => {
+          const next = new Map(prev);
+          next.set(piece.id, entryId);
+          return next;
+        });
+      }
+    } else {
+      // Save: mark as saved immediately, then update with real entry id
+      const tempId = `pending-${piece.id}`;
+      setSavedMap((prev) => {
+        const next = new Map(prev);
+        next.set(piece.id, tempId);
+        return next;
+      });
+      try {
+        const entry = await api.saveRepertoire({ pieceId: piece.id, status: 'NEW' });
+        setSavedMap((prev) => {
+          const next = new Map(prev);
+          next.set(piece.id, entry.id);
+          return next;
+        });
+        if (onSaved) onSaved();
+      } catch {
+        // rollback on failure
+        setSavedMap((prev) => {
+          const next = new Map(prev);
+          next.delete(piece.id);
+          return next;
+        });
+      }
     }
   }
+
+  const isSaved = detail && savedMap?.has(detail.id);
 
   return (
     <div>
@@ -148,17 +203,22 @@ export default function CatalogPanel({ token, onSaved }) {
           {detail && <PieceDetail piece={detail} />}
           {detail && token && (
             <div className="row" style={{ marginTop: '1rem' }}>
-              <button onClick={saveToRepertoire}>Save to my repertoire</button>
+              <button
+                className={isSaved ? 'secondary' : ''}
+                onClick={() => toggleSave(detail)}
+              >
+                {isSaved ? 'Remove from my library' : 'Save to my library'}
+              </button>
+              {isSaved && (
+                <span className="status" style={{ alignSelf: 'center' }}>
+                  Saved to your library
+                </span>
+              )}
             </div>
           )}
           {detail && !token && (
             <div className="status" style={{ marginTop: '0.75rem' }}>
-              Log in to save this to your repertoire.
-            </div>
-          )}
-          {saveMessage && (
-            <div className={saveMessage.kind === 'success' ? 'success' : 'error'}>
-              {saveMessage.text}
+              Log in to save this to your library.
             </div>
           )}
         </div>
@@ -173,7 +233,15 @@ export default function CatalogPanel({ token, onSaved }) {
         )}
         <div className="piece-grid">
           {results.map((p) => (
-            <PieceCard key={p.id} piece={p} onClick={() => openDetail(p.id)} active={selectedId === p.id} />
+            <PieceCard
+              key={p.id}
+              piece={p}
+              onClick={() => openDetail(p.id)}
+              active={selectedId === p.id}
+              token={token}
+              savedMap={savedMap}
+              onToggleSave={toggleSave}
+            />
           ))}
         </div>
       </div>
@@ -181,10 +249,30 @@ export default function CatalogPanel({ token, onSaved }) {
   );
 }
 
-function PieceCard({ piece, onClick, active }) {
+function PieceCard({ piece, onClick, active, token, savedMap, onToggleSave }) {
+  const isSaved = savedMap?.has(piece.id);
+
   return (
-    <button type="button" onClick={onClick} className={`piece-card ${active ? 'active' : ''}`}>
-      <div className="piece-card-title">{piece.title}</div>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === 'Enter' && onClick()}
+      className={`piece-card ${active ? 'active' : ''}`}
+    >
+      <div className="piece-card-header">
+        <div className="piece-card-title">{piece.title}</div>
+        {token && (
+          <button
+            type="button"
+            className={`piece-card-save ${isSaved ? 'saved' : ''}`}
+            onClick={(e) => { e.stopPropagation(); onToggleSave(piece); }}
+            title={isSaved ? 'Remove from library' : 'Save to library'}
+          >
+            {isSaved ? '★' : '☆'}
+          </button>
+        )}
+      </div>
       {piece.alternateTitle && <div className="piece-card-alt">a.k.a. {piece.alternateTitle}</div>}
       <div className="piece-card-meta">
         {piece.composer || 'Unknown composer'}
@@ -206,7 +294,7 @@ function PieceCard({ piece, onClick, active }) {
             : piece.performanceNotes}
         </div>
       )}
-    </button>
+    </div>
   );
 }
 

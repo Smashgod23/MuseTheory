@@ -1,0 +1,13 @@
+{
+  "name": "musetheory-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "ingest": "node ingest-openopus.js",
+    "ingest:fast": "node ingest-openopus.js --skip-imslp"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "pg": "^8.11.3"
+  }
+}

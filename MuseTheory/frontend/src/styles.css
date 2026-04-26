@@ -223,11 +223,36 @@ pre {
   background: #eef4ff;
 }
 
+.piece-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-bottom: 0.2rem;
+}
+
 .piece-card-title {
   font-weight: 600;
   font-size: 0.98rem;
-  margin-bottom: 0.2rem;
   color: #111827;
+  flex: 1;
+}
+
+.piece-card-save {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: color 0.1s;
+}
+
+.piece-card-save:hover,
+.piece-card-save.saved {
+  color: #2d6cdf;
 }
 
 .piece-card-alt {
