@@ -86,6 +86,9 @@ export default function CatalogPanel({ token, onSaved }) {
     const entryId = savedMap.get(piece.id);
 
     if (entryId) {
+      // Save is still in-flight - don't attempt DELETE with a placeholder id.
+      if (entryId.startsWith('pending-')) return;
+
       // Unsave: remove immediately then confirm with server
       setSavedMap((prev) => {
         const next = new Map(prev);
@@ -262,11 +265,12 @@ function PieceCard({ piece, onClick, active, token, savedMap, onToggleSave }) {
     >
       <div className="piece-card-header">
         <div className="piece-card-title">{piece.title}</div>
-        {token && (
+        {token && savedMap !== null && (
           <button
             type="button"
             className={`piece-card-save ${isSaved ? 'saved' : ''}`}
             onClick={(e) => { e.stopPropagation(); onToggleSave(piece); }}
+            onKeyDown={(e) => e.stopPropagation()}
             title={isSaved ? 'Remove from library' : 'Save to library'}
           >
             {isSaved ? '★' : '☆'}
