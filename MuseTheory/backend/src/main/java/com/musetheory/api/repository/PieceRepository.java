@@ -32,6 +32,7 @@ public interface PieceRepository extends JpaRepository<Piece, UUID> {
                     )
                 AND (:style        = '' OR LOWER(p.genre)        = LOWER(:style))
                 AND (:language     = '' OR LOWER(p.language)     = LOWER(:language))
+                AND (:instrument   = '' OR LOWER(COALESCE(p.instrumentation, '')) LIKE LOWER(CONCAT('%', :instrument, '%')))
                 AND (:difficultyMin IS NULL OR p.difficultyLevel >= :difficultyMin)
                 AND (:difficultyMax IS NULL OR p.difficultyLevel <= :difficultyMax)
             ORDER BY
@@ -48,6 +49,7 @@ public interface PieceRepository extends JpaRepository<Piece, UUID> {
                        @Param("ensembleType") String ensembleType,
                        @Param("style") String style,
                        @Param("language") String language,
+                       @Param("instrument") String instrument,
                        @Param("difficultyMin") Integer difficultyMin,
                        @Param("difficultyMax") Integer difficultyMax);
 }

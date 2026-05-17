@@ -81,6 +81,7 @@ public class AuthService {
         return AuthResponse.of(token, UserResponse.from(user));
     }
 
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));

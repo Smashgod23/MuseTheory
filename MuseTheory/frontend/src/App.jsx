@@ -11,11 +11,27 @@ const TABS = [
 
 export default function App() {
   const [token, setTokenState] = useState(getToken());
+  const [user, setUser] = useState(null);
   const [tab, setTab] = useState('catalog');
   const [libraryRefresh, setLibraryRefresh] = useState(0);
 
   useEffect(() => {
     setToken(token);
+    if (!token) {
+      setUser(null);
+      return;
+    }
+    let cancelled = false;
+    api.me()
+      .then((data) => {
+        if (!cancelled) setUser(data);
+      })
+      .catch(() => {
+        if (!cancelled) setTokenState(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   return (
@@ -25,7 +41,7 @@ export default function App() {
           <h1>MuseTheory</h1>
           <span className="status">AI music coaching workspace</span>
         </div>
-        <AuthBar token={token} onTokenChange={setTokenState} />
+        <AuthBar token={token} user={user} onTokenChange={setTokenState} />
       </header>
 
       <nav className="tabs">
@@ -43,6 +59,7 @@ export default function App() {
       {tab === 'catalog' && (
         <CatalogPanel
           token={token}
+          user={user}
           onSaved={() => setLibraryRefresh((n) => n + 1)}
         />
       )}
@@ -52,7 +69,7 @@ export default function App() {
   );
 }
 
-function AuthBar({ token, onTokenChange }) {
+function AuthBar({ token, user, onTokenChange }) {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({
     email: '',
@@ -61,20 +78,33 @@ function AuthBar({ token, onTokenChange }) {
     lastName: '',
     role: 'STUDENT',
     skillLevel: 'BEGINNER',
+    instrumentId: '',
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
+  const [instruments, setInstruments] = useState([]);
+
+  useEffect(() => {
+    if (!open || mode !== 'register' || instruments.length > 0) return;
+    api.listInstruments()
+      .then((list) => setInstruments(list || []))
+      .catch(() => setInstruments([]));
+  }, [open, mode, instruments.length]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const data =
-        mode === 'login'
-          ? await api.login({ email: form.email, password: form.password })
-          : await api.register(form);
+      let data;
+      if (mode === 'login') {
+        data = await api.login({ email: form.email, password: form.password });
+      } else {
+        const payload = { ...form };
+        if (!payload.instrumentId) delete payload.instrumentId;
+        data = await api.register(payload);
+      }
       if (data?.token) {
         onTokenChange(data.token);
         setOpen(false);
@@ -87,9 +117,12 @@ function AuthBar({ token, onTokenChange }) {
   }
 
   if (token) {
+    const greeting = user?.firstName
+      ? `Welcome, ${user.firstName}${user.instrumentName ? ` (${user.instrumentName})` : ''}`
+      : 'Signed in';
     return (
       <div className="auth-bar">
-        <span className="success">Signed in</span>
+        <span className="success">{greeting}</span>
         <button
           className="secondary"
           onClick={() => {
@@ -170,6 +203,37 @@ function AuthBar({ token, onTokenChange }) {
                   <option value="BEGINNER">Beginner</option>
                   <option value="INTERMEDIATE">Intermediate</option>
                   <option value="ADVANCED">Advanced</option>
+                </select>
+              </div>
+              <div className="row">
+                <select
+                  value={form.instrumentId}
+                  onChange={(e) => setForm({ ...form, instrumentId: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">Instrument or voice part (optional)</option>
+                  {instruments.filter((i) => i.type !== 'voice').length > 0 && (
+                    <optgroup label="Instruments">
+                      {instruments
+                        .filter((i) => i.type !== 'voice')
+                        .map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                  {instruments.filter((i) => i.type === 'voice').length > 0 && (
+                    <optgroup label="Voice parts">
+                      {instruments
+                        .filter((i) => i.type === 'voice')
+                        .map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
             </>

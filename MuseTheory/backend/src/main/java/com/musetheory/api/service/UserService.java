@@ -29,12 +29,16 @@ public class UserService {
         this.teacherRepository = teacherRepository;
     }
 
+    // Read-only transaction keeps the Hibernate session open during DTO mapping
+    // so UserResponse.from can dereference the LAZY instrument relation.
+    @Transactional(readOnly = true)
     public UserResponse getById(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
         return UserResponse.from(user);
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getAll() {
         return userRepository.findAll().stream()
                 .map(UserResponse::from)

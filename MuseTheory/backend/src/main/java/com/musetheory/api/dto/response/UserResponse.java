@@ -21,6 +21,7 @@ public class UserResponse {
     private String musicalGoals;
     private UUID teacherId;
     private UUID instrumentId;
+    private String instrumentName;
     private Instant createdAt;
 
     public static UserResponse from(User user) {
@@ -34,6 +35,7 @@ public class UserResponse {
                 .musicalGoals(user.getMusicalGoals())
                 .teacherId(user.getTeacher() != null ? user.getTeacher().getId() : null)
                 .instrumentId(user.getInstrument() != null ? user.getInstrument().getId() : null)
+                .instrumentName(user.getInstrument() != null ? user.getInstrument().getName() : null)
                 .createdAt(user.getCreatedAt())
                 .build();
     }

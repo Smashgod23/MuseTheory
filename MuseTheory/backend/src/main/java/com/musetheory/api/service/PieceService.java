@@ -30,6 +30,7 @@ public class PieceService {
                                       String ensembleType,
                                       String style,
                                       String language,
+                                      String instrument,
                                       Integer difficultyMin,
                                       Integer difficultyMax) {
         // Empty string (not null) is the "no filter" sentinel. Untyped JDBC nulls
@@ -38,12 +39,14 @@ public class PieceService {
         String normalizedEnsemble = (ensembleType == null || ensembleType.isBlank()) ? "" : ensembleType.trim();
         String normalizedStyle = (style == null || style.isBlank()) ? "" : style.trim();
         String normalizedLanguage = (language == null || language.isBlank()) ? "" : language.trim();
+        String normalizedInstrument = (instrument == null || instrument.isBlank()) ? "" : instrument.trim();
 
         return pieceRepository.search(
                 normalizedQ,
                 normalizedEnsemble,
                 normalizedStyle,
                 normalizedLanguage,
+                normalizedInstrument,
                 difficultyMin,
                 difficultyMax
         ).stream().map(PieceResponse::from).toList();

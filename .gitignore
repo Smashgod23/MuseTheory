@@ -31,3 +31,9 @@ __pycache__/
 
 # === Logs ===
 *.log
+
+# === Local dev fixtures with credentials ===
+MuseTheory/fixtures/dummy_users.json
+
+# === Playwright MCP test artifacts ===
+.playwright-mcp/

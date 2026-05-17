@@ -33,10 +33,11 @@ public class PieceController {
             @RequestParam(required = false) String ensembleType,
             @RequestParam(required = false) String style,
             @RequestParam(required = false) String language,
+            @RequestParam(required = false) String instrument,
             @RequestParam(required = false) Integer difficultyMin,
             @RequestParam(required = false) Integer difficultyMax) {
         return ResponseEntity.ok(
-                pieceService.search(q, ensembleType, style, language, difficultyMin, difficultyMax)
+                pieceService.search(q, ensembleType, style, language, instrument, difficultyMin, difficultyMax)
         );
     }
 

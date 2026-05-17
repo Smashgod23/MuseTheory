@@ -14,12 +14,13 @@ const ENSEMBLE_OPTIONS = [
   { value: 'solo',     label: 'Solo instrument' },
 ];
 
-export default function CatalogPanel({ token, onSaved }) {
+export default function CatalogPanel({ token, user, onSaved }) {
   const [filters, setFilters] = useState({
     q: '',
     ensembleType: '',
     style: '',
     language: '',
+    instrument: '',
     difficultyMin: '',
     difficultyMax: '',
   });
@@ -55,12 +56,24 @@ export default function CatalogPanel({ token, onSaved }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function runSearch(e) {
-    if (e) e.preventDefault();
+  // Auto-apply the logged-in user's instrument as a personalized filter.
+  // Re-runs whenever the user's instrument resolves (login) or clears (logout).
+  const userInstrument = user?.instrumentName || '';
+  useEffect(() => {
+    setFilters((prev) => {
+      if (prev.instrument === userInstrument) return prev;
+      const next = { ...prev, instrument: userInstrument };
+      runSearchWith(next);
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userInstrument]);
+
+  async function runSearchWith(f) {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.searchPieces(filters);
+      const data = await api.searchPieces(f);
       setResults(data || []);
     } catch (err) {
       setError(err.message);
@@ -68,6 +81,17 @@ export default function CatalogPanel({ token, onSaved }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function runSearch(e) {
+    if (e) e.preventDefault();
+    await runSearchWith(filters);
+  }
+
+  function clearInstrumentFilter() {
+    const next = { ...filters, instrument: '' };
+    setFilters(next);
+    runSearchWith(next);
   }
 
   async function openDetail(id) {
@@ -148,6 +172,19 @@ export default function CatalogPanel({ token, onSaved }) {
     <div>
       <div className="card">
         <h2>Search repertoire</h2>
+        {filters.instrument && (
+          <div className="status" style={{ marginBottom: '0.75rem' }}>
+            Personalized for: <strong>{filters.instrument}</strong>{' '}
+            <button
+              type="button"
+              className="secondary"
+              onClick={clearInstrumentFilter}
+              style={{ marginLeft: '0.5rem' }}
+            >
+              Show all pieces
+            </button>
+          </div>
+        )}
         <form onSubmit={runSearch}>
           <div className="row">
             <input
