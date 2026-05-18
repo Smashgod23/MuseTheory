@@ -37,7 +37,7 @@ Spring Boot is the single public entry point. It owns authentication (JWT), all 
 
 | Table | Purpose |
 |-------|---------|
-| users | Student/teacher/admin profiles with role, skill level, goals |
+| users | Student/teacher/admin profiles with role, skill level, goals, and chosen instrument or voice part (used to personalize the catalog) |
 | instruments | Supported instruments and voice types |
 | pieces | Musical pieces with metadata and score references |
 | piece_parameters | Expressive map per piece+instrument (repetition, tension, stress maps) |
