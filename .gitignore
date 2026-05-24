@@ -37,3 +37,8 @@ MuseTheory/fixtures/dummy_users.json
 
 # === Playwright MCP test artifacts ===
 .playwright-mcp/
+musetheory-*.png
+
+# === Local-only reference materials and personal checklists ===
+Assets/
+to-doList/
