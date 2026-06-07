@@ -112,7 +112,21 @@ export default function AuthPage({ onAuthenticated }) {
               value={form.password}
               onChange={update('password')}
               required
+              minLength={mode === 'register' ? 8 : undefined}
+              pattern={
+                mode === 'register'
+                  ? '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z\\d]).{8,}$'
+                  : undefined
+              }
+              title={
+                mode === 'register'
+                  ? 'At least 8 characters, with one uppercase letter, one lowercase letter, one number, and one special character.'
+                  : undefined
+              }
             />
+            {mode === 'register' && (
+              <PasswordStrength value={form.password} />
+            )}
           </div>
 
           {mode === 'register' && (
@@ -186,5 +200,24 @@ export default function AuthPage({ onAuthenticated }) {
         </form>
       </div>
     </div>
+  );
+}
+
+function PasswordStrength({ value }) {
+  const rules = [
+    { label: 'At least 8 characters', ok: value.length >= 8 },
+    { label: 'One uppercase letter', ok: /[A-Z]/.test(value) },
+    { label: 'One lowercase letter', ok: /[a-z]/.test(value) },
+    { label: 'One number', ok: /\d/.test(value) },
+    { label: 'One special character', ok: /[^a-zA-Z\d]/.test(value) },
+  ];
+  return (
+    <ul className="password-rules">
+      {rules.map((r) => (
+        <li key={r.label} className={r.ok ? 'ok' : ''}>
+          <span aria-hidden="true">{r.ok ? '✓' : '○'}</span> {r.label}
+        </li>
+      ))}
+    </ul>
   );
 }
