@@ -68,9 +68,23 @@ public class S3Service {
             throw new IllegalArgumentException("Audio file exceeds 50MB limit");
         }
 
+        // Browsers and phones are inconsistent about audio MIME types: .m4a often
+        // arrives as video/mp4 or application/octet-stream, .flac sometimes with no
+        // type at all. Accept by content type OR by a known audio file extension.
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("audio/")) {
-            throw new IllegalArgumentException("File must be an audio file (audio/wav, audio/mpeg, etc.)");
+        boolean typeOk = contentType != null
+                && (contentType.startsWith("audio/")
+                    || contentType.equals("video/mp4")
+                    || contentType.equals("application/octet-stream"));
+
+        String name = file.getOriginalFilename();
+        String lower = name == null ? "" : name.toLowerCase();
+        boolean extensionOk = lower.endsWith(".wav") || lower.endsWith(".mp3")
+                || lower.endsWith(".m4a") || lower.endsWith(".flac")
+                || lower.endsWith(".ogg") || lower.endsWith(".aac");
+
+        if (!typeOk && !extensionOk) {
+            throw new IllegalArgumentException("File must be an audio file (wav, mp3, m4a, flac, ogg)");
         }
     }
 }
