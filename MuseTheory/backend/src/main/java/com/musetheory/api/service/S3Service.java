@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -85,7 +86,7 @@ public class S3Service {
      * them. Never echoes the client filename itself into the key.
      */
     private String audioExtension(String filename) {
-        String lower = filename == null ? "" : filename.toLowerCase();
+        String lower = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
         for (String ext : new String[] {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac"}) {
             if (lower.endsWith(ext)) {
                 return ext;
@@ -112,7 +113,7 @@ public class S3Service {
                     || contentType.equals("application/octet-stream"));
 
         String name = file.getOriginalFilename();
-        String lower = name == null ? "" : name.toLowerCase();
+        String lower = name == null ? "" : name.toLowerCase(Locale.ROOT);
         boolean extensionOk = lower.endsWith(".wav") || lower.endsWith(".mp3")
                 || lower.endsWith(".m4a") || lower.endsWith(".flac")
                 || lower.endsWith(".ogg") || lower.endsWith(".aac");
