@@ -34,7 +34,9 @@ public class S3Service {
     public String uploadAudio(MultipartFile file, UUID performanceId) throws IOException {
         validateAudioFile(file);
 
-        String key = "performances/" + performanceId + "/" + file.getOriginalFilename();
+        // Fully server-generated key: never interpolate the client filename (avoids
+        // CRLF/control chars leaking into the key and the public URL).
+        String key = "performances/" + performanceId + "/recording" + audioExtension(file.getOriginalFilename());
 
         PutObjectRequest putRequest = PutObjectRequest.builder()
                 .bucket(bucket)
@@ -75,6 +77,21 @@ public class S3Service {
             return clientType;
         }
         return "application/octet-stream";
+    }
+
+    /**
+     * Whitelist-only extension lookup: returns one of the known-safe extensions
+     * (with the leading dot), or ".audio" if the filename doesn't match any of
+     * them. Never echoes the client filename itself into the key.
+     */
+    private String audioExtension(String filename) {
+        String lower = filename == null ? "" : filename.toLowerCase();
+        for (String ext : new String[] {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".aac"}) {
+            if (lower.endsWith(ext)) {
+                return ext;
+            }
+        }
+        return ".audio";
     }
 
     private void validateAudioFile(MultipartFile file) {
