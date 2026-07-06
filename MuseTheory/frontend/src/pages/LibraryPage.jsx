@@ -342,9 +342,10 @@ function EntryDetail({ entryId, onClose, onDeleted, onUpdated }) {
 
           <div className="workspace-section">
             <h3>Recordings · {detail.performances.length}</h3>
+            <UploadRecording pieceId={detail.entry.piece.id} onUploaded={loadDetail} />
             {detail.performances.length === 0 && (
               <div className="status">
-                No recordings yet. Upload a performance to get AI coaching back.
+                No recordings yet. Upload a performance above to get AI coaching back.
               </div>
             )}
             <ul className="log-list">
@@ -382,5 +383,57 @@ function EntryDetail({ entryId, onClose, onDeleted, onUpdated }) {
         </>
       )}
     </div>
+  );
+}
+
+function UploadRecording({ pieceId, onUploaded }) {
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [done, setDone] = useState(null);
+
+  async function handleUpload(e) {
+    e.preventDefault();
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    setDone(null);
+    try {
+      // The analysis needs the singer's voice part; use the one on the profile,
+      // falling back to the first voice instrument in the catalog.
+      const me = await api.me();
+      let instrumentId = me?.instrumentId;
+      if (!instrumentId) {
+        const instruments = await api.listInstruments();
+        const rows = Array.isArray(instruments) ? instruments : instruments?.content || [];
+        const voice = rows.find((i) => i.type === 'voice') || rows[0];
+        instrumentId = voice?.id;
+      }
+      if (!instrumentId) throw new Error('No instrument found for this account.');
+      const result = await api.uploadPerformance({ pieceId, instrumentId }, file);
+      setDone(`Analyzed. ${result?.feedback?.length ?? 0} coaching notes added below.`);
+      setFile(null);
+      if (onUploaded) await onUploaded();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="row" onSubmit={handleUpload} style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <input
+        type="file"
+        accept="audio/*,.wav,.mp3,.m4a,.flac"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+        disabled={busy}
+      />
+      <button type="submit" disabled={!file || busy}>
+        {busy ? 'Analyzing… (~30s)' : 'Upload & analyze'}
+      </button>
+      {error && <div className="error">{error}</div>}
+      {done && <div className="status">{done}</div>}
+    </form>
   );
 }

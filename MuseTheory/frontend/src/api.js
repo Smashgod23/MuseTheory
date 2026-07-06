@@ -78,4 +78,23 @@ export const api = {
   updateRepertoire: (id, payload) => request('PATCH', `/api/repertoire/${id}`, payload),
   deleteRepertoire: (id) => request('DELETE', `/api/repertoire/${id}`),
   logPractice: (id, payload) => request('POST', `/api/repertoire/${id}/practice-sessions`, payload),
+
+  // Performances (multipart: metadata JSON part + audio file part).
+  // Analysis runs synchronously on the server, so this can take ~30s.
+  uploadPerformance: async (metadata, file) => {
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('audio', file);
+    const headers = {};
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch('/api/performances', { method: 'POST', headers, body: form });
+    const text = await res.text();
+    const data = text ? safeParse(text) : null;
+    if (!res.ok) {
+      const message = (data && (data.message || data.error)) || `HTTP ${res.status}`;
+      throw new Error(message);
+    }
+    return data;
+  },
 };

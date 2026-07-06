@@ -1,5 +1,7 @@
 package com.musetheory.api.dto.ai;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 
 import java.util.List;
@@ -7,14 +9,18 @@ import java.util.List;
 /**
  * Response received from the FastAPI AI microservice.
  * Contains extracted features and generated coaching suggestions.
+ * Deserialized from snake_case to match the AI service contract; the naming
+ * strategy is scoped to these DTOs so the public REST API keeps its camelCase JSON.
  */
 @Data
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class AIAnalysisResponse {
 
     private AIFeatureVector featureVector;
     private List<AISuggestion> suggestions;
 
     @Data
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class AIFeatureVector {
         private Double tempoMean;
         private Double tempoVariance;
@@ -35,6 +41,7 @@ public class AIAnalysisResponse {
     }
 
     @Data
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class AISuggestion {
         private String suggestionText;
         private Double musicalityScore;
