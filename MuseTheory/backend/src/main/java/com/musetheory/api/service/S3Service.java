@@ -39,7 +39,12 @@ public class S3Service {
         PutObjectRequest putRequest = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(key)
-                .contentType(file.getContentType())
+                // Store a safe, server-decided content type rather than the client's.
+                // The bucket is publicly readable, so trusting a client-sent
+                // "text/html" would let an attacker serve a script from our origin.
+                .contentType(safeStoredContentType(file.getContentType()))
+                // Force download rather than inline rendering as defense in depth.
+                .contentDisposition("attachment")
                 .contentLength(file.getSize())
                 .build();
 
@@ -58,6 +63,18 @@ public class S3Service {
                 .key(key)
                 .build());
         log.info("Deleted audio from S3: {}", key);
+    }
+
+    /**
+     * Only ever store a benign content type. Client-sent values are untrusted:
+     * a "text/html" upload named like audio would otherwise be rendered (and its
+     * scripts executed) straight from our public bucket.
+     */
+    private String safeStoredContentType(String clientType) {
+        if (clientType != null && clientType.startsWith("audio/")) {
+            return clientType;
+        }
+        return "application/octet-stream";
     }
 
     private void validateAudioFile(MultipartFile file) {
