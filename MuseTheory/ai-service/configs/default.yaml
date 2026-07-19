@@ -116,6 +116,11 @@ coaching:
   # recording's pitch range; the LLM uses a per-part technique brief to adapt
   # wording. Measured facts are unchanged; only language is personalized.
   personalize_voice_part: true
+  # Personalize against the singer's own history on a piece. When the backend
+  # passes a user_baseline summarizing at least this many of their prior takes,
+  # the coach adds relative findings ("narrower than your usual here"). First
+  # takes have no baseline and behave exactly as before.
+  baseline_min_takes: 2
   # Qwen2.5-3B-Instruct-4bit (~1.7 GB) loads cleanly on the pinned mlx-lm 0.15.2.
   # (Llama-3.2-3B uses a newer rope_scaling format that pinned mlx-lm can't parse.)
   llm_id: mlx-community/Qwen2.5-3B-Instruct-4bit

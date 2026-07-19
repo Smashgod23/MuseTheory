@@ -174,6 +174,7 @@ class Pipeline:
             suggestions = generate_suggestions(
                 analysis, context, dimension_scores, self.cfg,
                 deficit_severities=deficit_severities, voice_part=voice_part,
+                user_baseline=request.user_baseline, baseline_takes=request.baseline_takes or 0,
             )
         except Exception as exc:  # noqa: BLE001
             log.warning("Suggestion generation failed: %s", exc)

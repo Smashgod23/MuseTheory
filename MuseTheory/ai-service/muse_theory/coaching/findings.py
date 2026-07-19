@@ -300,11 +300,92 @@ def diagnosis_findings(analysis, severities: dict[str, float], min_severity: flo
     return out
 
 
+def baseline_findings(analysis, baseline: dict[str, float] | None, n_takes: int) -> list[Finding]:
+    """Relative findings: compare this take to the singer's own median on this
+    piece. Only fires for features where 'more' and 'less' have a clear musical
+    reading (dynamic range, pitch stability, expressive contrast). Every finding
+    carries the current value, the usual value, and how many past takes it came
+    from, so the realizer can cite them without inventing anything. This is the
+    honest version of personalization: the paper's own result is that the model
+    is strong at *relative* comparison, so coaching a take against the singer's
+    own baseline plays to that strength rather than to an absolute reference."""
+    out: list[Finding] = []
+    if not baseline:
+        return out
+
+    def cur(attr: str) -> float | None:
+        v = getattr(analysis, attr, None)
+        return None if v is None else float(v)
+
+    # -- dynamic range (dB; higher = wider spread) --
+    c, usual = cur("dynamic_range"), baseline.get("dynamic_range")
+    if c is not None and usual and usual > 0:
+        delta = c - usual
+        if delta <= -3.0 and c < usual * 0.8:
+            out.append(Finding(
+                kind="narrower_than_usual", feature_targeted="dynamic_range",
+                salience=float(min(0.72, 0.45 + min(0.3, abs(delta) / usual))),
+                headline=f"Dynamic range {c:.0f} dB is narrower than this singer's usual {usual:.0f} dB here.",
+                evidence={"current_db": round(c, 1), "usual_db": round(usual, 1), "takes": int(n_takes)},
+            ))
+        elif delta >= 3.0 and c > usual * 1.2:
+            out.append(Finding(
+                kind="wider_than_usual", feature_targeted="dynamic_range", salience=0.40,
+                headline=f"Dynamic range {c:.0f} dB is wider than this singer's usual {usual:.0f} dB here.",
+                evidence={"current_db": round(c, 1), "usual_db": round(usual, 1), "takes": int(n_takes)},
+            ))
+
+    # -- pitch stability (0..1; higher = steadier) --
+    c, usual = cur("pitch_stability"), baseline.get("pitch_stability")
+    if c is not None and usual is not None:
+        delta = c - usual
+        if delta <= -0.08:
+            out.append(Finding(
+                kind="less_steady_than_usual", feature_targeted="pitch_stability",
+                salience=float(min(0.70, 0.45 + abs(delta))),
+                headline=f"Pitch stability {c:.2f} is below this singer's usual {usual:.2f} here.",
+                evidence={"current": round(c, 2), "usual": round(usual, 2), "takes": int(n_takes)},
+            ))
+        elif delta >= 0.08:
+            out.append(Finding(
+                kind="steadier_than_usual", feature_targeted="pitch_stability", salience=0.38,
+                headline=f"Pitch stability {c:.2f} is above this singer's usual {usual:.2f} here.",
+                evidence={"current": round(c, 2), "usual": round(usual, 2), "takes": int(n_takes)},
+            ))
+
+    # -- expressive contrast across repeats (0..1; higher = more varied) --
+    # Only when contrast_score actually came from repeated material; otherwise it
+    # is overall variability, and the templates' talk of "the repeats" and "the
+    # return" would assert structure we never measured (same guard the absolute
+    # contrast generator uses).
+    c, usual = cur("contrast_score"), baseline.get("contrast_score")
+    if (c is not None and usual is not None
+            and getattr(analysis, "contrast_source", None) in ("repetition_map", "self_similar")):
+        delta = c - usual
+        if delta <= -0.12:
+            out.append(Finding(
+                kind="less_contrast_than_usual", feature_targeted="contrast_score",
+                salience=float(min(0.66, 0.42 + abs(delta))),
+                headline=f"Expressive contrast {c:.2f} is below this singer's usual {usual:.2f} here.",
+                evidence={"current": round(c, 2), "usual": round(usual, 2), "takes": int(n_takes)},
+            ))
+        elif delta >= 0.12:
+            out.append(Finding(
+                kind="more_contrast_than_usual", feature_targeted="contrast_score", salience=0.36,
+                headline=f"Expressive contrast {c:.2f} is above this singer's usual {usual:.2f} here.",
+                evidence={"current": round(c, 2), "usual": round(usual, 2), "takes": int(n_takes)},
+            ))
+    return out
+
+
 def generate_findings(
     analysis,
     dimension_scores: dict[str, float] | None = None,
     deficit_severities: dict[str, float] | None = None,
     deficit_min_severity: float = 0.40,
+    user_baseline: dict[str, float] | None = None,
+    baseline_takes: int = 0,
+    baseline_min_takes: int = 2,
 ) -> list[Finding]:
     findings: list[Finding] = []
     # Always run the hand-threshold + structural generators. The learned diagnosis
@@ -315,6 +396,13 @@ def generate_findings(
     # synthetic->real calibration is still maturing.
     if deficit_severities:
         findings.extend(diagnosis_findings(analysis, deficit_severities, deficit_min_severity))
+    # Personalized, relative findings: also additive. Only when the backend passed
+    # a baseline summarizing enough of the singer's own past takes on this piece.
+    if user_baseline and baseline_takes >= baseline_min_takes:
+        try:
+            findings.extend(baseline_findings(analysis, user_baseline, baseline_takes))
+        except Exception:  # noqa: BLE001 - personalization must never break base coaching
+            pass
     for gen in (*_STRUCTURAL_GENERATORS, *_HAND_DEFICIT_GENERATORS):
         try:
             findings.extend(gen(analysis, dimension_scores))

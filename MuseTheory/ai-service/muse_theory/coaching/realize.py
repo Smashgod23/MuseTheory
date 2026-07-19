@@ -126,13 +126,17 @@ def _top_up(selected: list[Finding], analysis, min_n: int) -> list[Finding]:
 
 
 def generate_suggestions(
-    analysis, context, dimension_scores, cfg, deficit_severities=None, voice_part=None
+    analysis, context, dimension_scores, cfg, deficit_severities=None, voice_part=None,
+    user_baseline=None, baseline_takes=0,
 ) -> list[Suggestion]:
     findings = generate_findings(
         analysis,
         dimension_scores,
         deficit_severities=deficit_severities,
         deficit_min_severity=float(cfg.get_path("diagnosis.min_severity", 0.40)),
+        user_baseline=user_baseline,
+        baseline_takes=int(baseline_takes or 0),
+        baseline_min_takes=int(cfg.get_path("coaching.baseline_min_takes", 2)),
     )
     selected = _select(findings, cfg)
     if not selected:

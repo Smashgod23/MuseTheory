@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -25,4 +26,11 @@ public class AIAnalysisRequest {
     private String harmonicTensionMap;
     private String textStressMap;
     private String directorNotes;
+
+    // Personalization: the singer's own history on this piece. userBaseline maps a
+    // feature name (snake_case, matching the AI feature_vector keys) to their median
+    // value across prior takes; baselineTakes is how many takes it summarizes. Both
+    // null on a first take, so the AI service coaches exactly as before.
+    private Map<String, Double> userBaseline;
+    private Integer baselineTakes;
 }

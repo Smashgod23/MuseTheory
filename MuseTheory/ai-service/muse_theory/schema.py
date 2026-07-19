@@ -90,6 +90,16 @@ class AnalysisRequest(BaseModel):
     # that part; otherwise the part is estimated from the recording's pitch range.
     # Not part of the §3.1 feature_vector response, so no DB/schema change.
     voice_part: Optional[str] = None
+    # Optional, additive: the singer's own history on THIS piece, summarized by the
+    # backend from their prior performances' stored feature_vectors. `user_baseline`
+    # maps a feature name (a §3.2 key, e.g. "dynamic_range") to the singer's median
+    # value across those takes; `baseline_takes` is how many takes it came from.
+    # When present (and enough takes back it), the coach adds relative findings
+    # ("narrower than your usual on this piece"). Absent on a first take, so the
+    # service behaves exactly as before. The service never stores this; the backend
+    # owns the history and passes a summary, keeping this service stateless.
+    user_baseline: Optional[dict[str, float]] = None
+    baseline_takes: Optional[int] = None
 
 
 class FeatureVector(BaseModel):

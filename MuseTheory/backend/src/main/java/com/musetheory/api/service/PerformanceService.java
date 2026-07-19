@@ -16,8 +16,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 
 @Service
 public class PerformanceService {
@@ -90,6 +94,17 @@ public class PerformanceService {
                 .findByPieceIdAndInstrumentId(piece.getId(), instrument.getId())
                 .orElse(null);
 
+        // Personalize against the singer's own history on this piece: summarize
+        // their prior takes into a per-feature median the AI service can coach
+        // against ("narrower than your usual here"). Empty on a first take.
+        List<FeatureVector> history = featureVectorRepository
+                .findHistoryForUserAndPiece(user.getId(), piece.getId(), performance.getId());
+        Map<String, Double> userBaseline = computeBaseline(history);
+        if (!userBaseline.isEmpty()) {
+            log.info("Performance {}: personalizing against {} prior takes; baseline features {}",
+                    performance.getId(), history.size(), userBaseline.keySet());
+        }
+
         AIAnalysisRequest aiRequest = AIAnalysisRequest.builder()
                 .performanceId(performance.getId())
                 .audioUrl(audioUrl)
@@ -99,6 +114,8 @@ public class PerformanceService {
                 .harmonicTensionMap(pieceParams != null ? pieceParams.getHarmonicTensionMap() : null)
                 .textStressMap(pieceParams != null ? pieceParams.getTextStressMap() : null)
                 .directorNotes(pieceParams != null ? pieceParams.getDirectorNotes() : null)
+                .userBaseline(userBaseline.isEmpty() ? null : userBaseline)
+                .baselineTakes(userBaseline.isEmpty() ? null : history.size())
                 .build();
 
         AIAnalysisResponse aiResponse = aiServiceClient.analyze(aiRequest);
@@ -159,6 +176,50 @@ public class PerformanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Performance", "id", id));
         s3Service.deleteAudio(p.getAudioUrl());
         performanceRepository.delete(p);
+    }
+
+    /**
+     * Summarize a singer's prior takes of a piece into a per-feature median (their
+     * "usual"). Only features whose direction has a clear coaching meaning are
+     * included, and only when at least two prior takes actually measured them, so a
+     * single noisy value never becomes a baseline. Keys are snake_case to match the
+     * AI service's feature_vector names. Returns empty when there is not enough
+     * history, in which case the caller sends no baseline and coaching is unchanged.
+     */
+    private Map<String, Double> computeBaseline(List<FeatureVector> history) {
+        Map<String, Double> baseline = new LinkedHashMap<>();
+        if (history == null || history.size() < 2) {
+            return baseline;
+        }
+        Map<String, Function<FeatureVector, Double>> features = new LinkedHashMap<>();
+        features.put("dynamic_range", FeatureVector::getDynamicRange);
+        features.put("pitch_stability", FeatureVector::getPitchStability);
+        features.put("contrast_score", FeatureVector::getContrastScore);
+        features.put("vibrato_extent", FeatureVector::getVibratoExtent);
+        features.put("spectral_centroid_mean", FeatureVector::getSpectralCentroidMean);
+        features.put("phrase_length_variance", FeatureVector::getPhraseLengthVariance);
+        features.put("articulation_style", FeatureVector::getArticulationStyle);
+
+        for (Map.Entry<String, Function<FeatureVector, Double>> entry : features.entrySet()) {
+            List<Double> values = new ArrayList<>();
+            for (FeatureVector fv : history) {
+                Double v = entry.getValue().apply(fv);
+                if (v != null && !v.isNaN() && !v.isInfinite()) {
+                    values.add(v);
+                }
+            }
+            if (values.size() >= 2) {
+                baseline.put(entry.getKey(), median(values));
+            }
+        }
+        return baseline;
+    }
+
+    private double median(List<Double> values) {
+        List<Double> sorted = new ArrayList<>(values);
+        Collections.sort(sorted);
+        int n = sorted.size();
+        return (n % 2 == 1) ? sorted.get(n / 2) : (sorted.get(n / 2 - 1) + sorted.get(n / 2)) / 2.0;
     }
 
     private FeatureVector mapFeatureVector(Performance performance, AIAnalysisResponse.AIFeatureVector aiFv) {

@@ -181,8 +181,72 @@ def _dull_tone(f: Finding) -> str:
     )
 
 
+def _narrower_than_usual(f: Finding) -> str:
+    cur = f.evidence.get("current_db"); usual = f.evidence.get("usual_db"); n = f.evidence.get("takes")
+    return (
+        f"Across your last {n} takes of this piece you usually range about {usual:.0f} dB from softest "
+        f"to loudest, but this one sits around {cur:.0f} dB, a bit flatter than your own norm. Pick one "
+        f"phrase to drop to a real piano and another to open into a genuine forte, and you are back to "
+        f"the arc you have already shown you can shape here."
+    )
+
+
+def _wider_than_usual(f: Finding) -> str:
+    cur = f.evidence.get("current_db"); usual = f.evidence.get("usual_db"); n = f.evidence.get("takes")
+    return (
+        f"This take opens up more than your usual on this piece, about {cur:.0f} dB from soft to loud "
+        f"against your typical {usual:.0f} across your last {n} takes. The dynamic arc is wider than "
+        f"you have done here before, so keep that spread and just make sure the softest phrase stays "
+        f"fully supported."
+    )
+
+
+def _less_steady_than_usual(f: Finding) -> str:
+    cur = f.evidence.get("current"); usual = f.evidence.get("usual"); n = f.evidence.get("takes")
+    return (
+        f"Your sustained pitches are wandering a little more than they usually do on this piece "
+        f"(stability {cur:.2f} against your typical {usual:.2f} across your last {n} takes). Reset the "
+        f"very start of each long note squarely in tune and hold that center; you have kept these "
+        f"steadier before, so it is well within reach today."
+    )
+
+
+def _steadier_than_usual(f: Finding) -> str:
+    cur = f.evidence.get("current"); usual = f.evidence.get("usual"); n = f.evidence.get("takes")
+    return (
+        f"Your intonation on held notes is steadier than your usual on this piece ({cur:.2f} against "
+        f"your typical {usual:.2f} across your last {n} takes); the core is locking in. Keep that anchor "
+        f"and start shaping dynamics and color around it, since the pitch is giving you the room to."
+    )
+
+
+def _less_contrast_than_usual(f: Finding) -> str:
+    cur = f.evidence.get("current"); usual = f.evidence.get("usual"); n = f.evidence.get("takes")
+    return (
+        f"The repeated material is blending together more than you usually let it on this piece "
+        f"(contrast {cur:.2f} against your typical {usual:.2f} across your last {n} takes). Give the "
+        f"return a clearly different color or dynamic; you have drawn that distinction more sharply "
+        f"before, so lean back into it."
+    )
+
+
+def _more_contrast_than_usual(f: Finding) -> str:
+    cur = f.evidence.get("current"); usual = f.evidence.get("usual"); n = f.evidence.get("takes")
+    return (
+        f"You are differentiating the repeats more than your usual on this piece (contrast {cur:.2f} "
+        f"against your typical {usual:.2f} across your last {n} takes); the return reads as a new thought "
+        f"rather than an echo. Keep leaning into that, it is working."
+    )
+
+
 _TEMPLATES = {
     "dull_tone": _dull_tone,
+    "narrower_than_usual": _narrower_than_usual,
+    "wider_than_usual": _wider_than_usual,
+    "less_steady_than_usual": _less_steady_than_usual,
+    "steadier_than_usual": _steadier_than_usual,
+    "less_contrast_than_usual": _less_contrast_than_usual,
+    "more_contrast_than_usual": _more_contrast_than_usual,
     "dynamics_stretch": _dynamics_stretch,
     "color_stretch": _color_stretch,
     "phrasing_stretch": _phrasing_stretch,
