@@ -1,0 +1,27 @@
+# Muse Theory — heavier ML dependencies (Apple Silicon / arm64, Python 3.11).
+# Installed on top of requirements-core.txt. Everything here is CPU/MPS-capable;
+# there is no CUDA requirement anywhere in this project.
+#
+#   - torch / torchaudio: MPS-backed tensor + audio I/O, used by demucs, the
+#     MERT embedding model, and (optionally) torchcrepe.
+#   - demucs: htdemucs_ft source separation for accompaniment-bearing input.
+#   - transformers / huggingface_hub: load the MERT SSL backbone + weights.
+#   - datasets: pinned SongEval download + iteration.
+#   - mlx / mlx-lm: on-device LLM for grounded coaching realization. These wheels
+#     only exist for Apple Silicon; on other platforms the pip install will skip
+#     them and the pipeline falls back to deterministic templates.
+#   - torchcrepe: optional high-accuracy pitch tracker (pYIN is the default).
+
+torch==2.2.2
+torchaudio==2.2.2
+demucs==4.0.1
+transformers==4.40.2
+huggingface_hub==0.23.4
+datasets==2.19.1
+torchcrepe==0.0.23
+einops==0.8.0
+nnAudio==0.3.3
+
+# Apple Silicon only — guarded so non-mac installs don't fail.
+mlx==0.15.2 ; platform_system == "Darwin" and platform_machine == "arm64"
+mlx-lm==0.15.2 ; platform_system == "Darwin" and platform_machine == "arm64"

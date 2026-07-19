@@ -1,0 +1,127 @@
+# Muse Theory pipeline configuration.
+#
+# Every tunable lives here so runs are reproducible and the owner can adjust
+# behavior without touching code. Values are chosen for solo + small-ensemble
+# vocal recordings. Anything model-related points at a pinned checkpoint.
+
+seed: 1729  # global RNG seed (numpy / torch / python) for reproducibility
+
+audio:
+  working_sr: 22050        # sample rate for librosa-based signal features
+  mert_sr: 24000           # MERT-v1-95M expects 24 kHz mono
+  mono: true
+  # Hard cap on analyzed audio. The backend's RestTemplate read timeout is 120s;
+  # worst case (Demucs separation + full feature pass) runs ~0.7x realtime on
+  # Apple Silicon, so 150s keeps us comfortably inside that budget. Longer
+  # recordings are truncated to the first 150s (logged). Raise this only if the
+  # backend timeout is raised too.
+  max_seconds: 150
+  min_seconds: 0.35        # below this we treat the clip as too short to analyze
+
+ingest:
+  # Defense-in-depth for the URL fetch (the service is internal-only, Spring is
+  # the sole caller). max_download_mb caps the streamed body (the backend's own
+  # multipart limit is 50 MB). block_link_local_ips refuses cloud-metadata /
+  # link-local hosts. Set MUSE_ALLOWED_AUDIO_HOSTS (comma-separated) to restrict
+  # fetches to an explicit host allowlist (e.g. your S3 / MinIO host).
+  max_download_mb: 80
+  block_link_local_ips: true
+
+separation:
+  enabled: true
+  # htdemucs is the in-budget default. htdemucs_ft is ~4x slower (bag of 4 models)
+  # for a small quality gain — prefer it only for offline/batch analysis where the
+  # 120s ceiling does not apply.
+  model: htdemucs          # demucs checkpoint; falls back to htdemucs if absent
+  # A-cappella gate: if estimated accompaniment energy ratio is below this, the
+  # input is treated as already-isolated voice and separation is skipped.
+  # Calibrated on measured distributions: solo a cappella (Vocadito) sits ~0.19-0.61
+  # (mean 0.36) and full mixes (SongEval) ~0.47-0.74 (mean 0.61). 0.45 skips ~9/10
+  # a cappella clips while still separating mixes. The bands overlap, so the gate is
+  # a best-effort heuristic, not a classifier.
+  accompaniment_ratio_threshold: 0.45
+  device: auto             # auto -> mps if available else cpu
+  # demucs chunk length. htdemucs (transformer) was trained at 7.8s and rejects
+  # longer segments, so this is clamped to the model's max in code. Keeps peak
+  # memory bounded on long inputs.
+  segment_seconds: 7.0
+
+pitch:
+  method: pyin             # pyin (default, no extra model) | crepe (torchcrepe)
+  fmin_hz: 65.0            # ~C2, covers Bass 2 low end
+  fmax_hz: 1200.0          # ~D6, covers soprano head voice
+  frame_length: 2048
+  hop_length: 512          # ~43 Hz F0 frame rate; ample for <=8 Hz vibrato, ~3x faster than 256
+  voiced_prob_threshold: 0.5
+
+vibrato:
+  rate_min_hz: 4.0         # plausible vibrato band for trained singers
+  rate_max_hz: 8.0
+  min_voiced_seconds: 0.4  # need a sustained note to measure vibrato
+
+dynamics:
+  rms_frame_length: 2048
+  rms_hop_length: 512
+  contour_points: 64       # downsample the RMS contour to this many JSON points
+
+timbre:
+  n_mfcc: 13
+
+articulation:
+  onset_backtrack: true
+
+phrasing:
+  # Breath/phrase segmentation: a gap of silence longer than this (seconds) below
+  # the energy floor is treated as a breath / phrase boundary.
+  min_breath_gap_seconds: 0.18
+  silence_rel_db: -38.0    # dB below the clip's 95th-percentile energy = "silent"
+
+structure:
+  # Self-similarity segmentation used when no repetition_map is supplied.
+  ssm_smoothing: 8
+  min_segment_seconds: 2.0
+
+model:
+  enabled: true
+  mert_id: m-a-p/MERT-v1-95M
+  regressor_path: artifacts/expressiveness_regressor.joblib
+  scaler_path: artifacts/expressiveness_scaler.joblib
+  # SongEval aesthetic dimensions, in the order the regressor emits them.
+  dimensions:
+    - coherence
+    - musicality
+    - memorability
+    - clarity
+    - naturalness   # "naturalness of vocal breathing and phrasing"
+
+diagnosis:
+  # Learned expressive-deficit detector (self-supervised; see
+  # training/build_diagnosis_data.py + train_diagnosis.py). It detects INJECTED
+  # degradation very well on unseen singers (flat_dynamics/dull_color/unstable_pitch
+  # AUC 0.89-1.00), but validation on real clips showed the synthetic->real gap:
+  # it flags "artificially degraded vs this singer's baseline," not "absolutely
+  # flat," so a naturally-narrow real performance isn't caught yet. Until it's
+  # grounded on absolute references (real contrastive data + the director-rated
+  # test set), it stays OFF by default so the proven hand thresholds handle
+  # absolute coaching. When enabled, its findings are ADDITIVE and never remove a
+  # correct hand-threshold note.
+  enabled: false
+  model_path: artifacts/diagnosis_model.joblib
+  min_severity: 0.40       # fire a coaching finding above this learned severity
+
+coaching:
+  use_llm: true            # if false (or MLX unavailable) -> template realizer
+  # Phrase coaching for the singer's voice part (S/A/T/B + optional subpart). The
+  # part comes from the request's voice_part when sent, else is estimated from the
+  # recording's pitch range; the LLM uses a per-part technique brief to adapt
+  # wording. Measured facts are unchanged; only language is personalized.
+  personalize_voice_part: true
+  # Qwen2.5-3B-Instruct-4bit (~1.7 GB) loads cleanly on the pinned mlx-lm 0.15.2.
+  # (Llama-3.2-3B uses a newer rope_scaling format that pinned mlx-lm can't parse.)
+  llm_id: mlx-community/Qwen2.5-3B-Instruct-4bit
+  max_suggestions: 6
+  min_suggestions: 3       # always try to return at least this many
+  temperature: 0.4
+  max_tokens: 130
+  # Findings below this salience (0-1) are dropped before realization.
+  min_salience: 0.25

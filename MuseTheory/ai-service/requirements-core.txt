@@ -1,0 +1,22 @@
+# Muse Theory — core runtime dependencies (Apple Silicon / arm64, Python 3.11)
+# These are everything the FastAPI service needs to ingest audio, extract the
+# deterministic signal-level features, and emit template-based coaching. The
+# heavier ML stack (source separation, SSL model, on-device LLM, dataset
+# tooling) lives in requirements-ml.txt so the service can run lean if needed.
+#
+# numpy is pinned <2 because numba (pulled in by librosa) and several audio
+# wheels still build against the 1.x ABI on arm64.
+
+numpy==1.26.4
+scipy==1.13.1
+soundfile==0.12.1
+audioread==3.0.1
+librosa==0.10.2.post1
+scikit-learn==1.4.2
+praat-parselmouth==0.4.5
+requests==2.32.3
+pydantic==2.7.0
+fastapi==0.110.1
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+orjson==3.10.3

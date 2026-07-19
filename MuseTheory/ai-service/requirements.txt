@@ -1,3 +1,14 @@
-fastapi==0.110.1
-uvicorn[standard]==0.29.0
-pydantic==2.7.0
+# Muse Theory AI service dependencies.
+#
+# This used to pin only FastAPI while the service returned random stub data.
+# It now installs the real model runtime, split in two so the service can run
+# lean if a host cannot take the heavy ML stack:
+#
+#   requirements-core.txt  audio I/O + deterministic feature extraction + the
+#                          FastAPI service itself. Enough for template coaching.
+#   requirements-ml.txt    source separation, the MERT aesthetics backbone, and
+#                          the on-device LLM rephraser. The MLX lines only
+#                          install on Apple Silicon; elsewhere pip skips them and
+#                          the pipeline falls back to deterministic templates.
+-r requirements-core.txt
+-r requirements-ml.txt
