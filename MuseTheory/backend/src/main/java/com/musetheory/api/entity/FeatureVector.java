@@ -3,6 +3,7 @@ package com.musetheory.api.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -15,7 +16,7 @@ import java.util.UUID;
 public class FeatureVector {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @UuidGenerator(algorithm = UuidV7Generator.class)
     private UUID id;
 
     @OneToOne(fetch = FetchType.LAZY)

@@ -4,6 +4,7 @@ import com.musetheory.api.enums.FeedbackSource;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -16,7 +17,7 @@ import java.util.UUID;
 public class PerformanceFeedback {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @UuidGenerator(algorithm = UuidV7Generator.class)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)

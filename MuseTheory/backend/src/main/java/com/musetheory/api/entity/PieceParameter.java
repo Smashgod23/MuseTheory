@@ -3,6 +3,7 @@ package com.musetheory.api.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
@@ -17,7 +18,7 @@ import java.util.UUID;
 public class PieceParameter {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @UuidGenerator(algorithm = UuidV7Generator.class)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
